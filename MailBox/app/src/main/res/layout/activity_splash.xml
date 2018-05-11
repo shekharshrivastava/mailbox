@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".SplashActivity">
+
+    <RelativeLayout
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerInParent="true">
+
+        <ImageView
+            android:layout_centerInParent="true"
+            android:id="@+id/appIconIv"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/mailbox" />
+
+        <TextView
+            android:textSize="15sp"
+            android:id="@+id/info_1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/appIconIv"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:text="Manage your mail in an easy way" />
+
+        <Button
+            android:id="@+id/btn_getStarted"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_below="@+id/info_1"
+            android:layout_centerInParent="true"
+            android:layout_marginTop="25dp"
+            android:background="@color/colorPrimary"
+            android:padding="10dp"
+            android:text="Get Started"
+            android:textColor="#fff" />
+    </RelativeLayout>
+</RelativeLayout>

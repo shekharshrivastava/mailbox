@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#2980b9</color>
+    <color name="colorPrimaryDark">#000</color>
+    <color name="colorAccent">#61acde</color>
+    <color name="bs_divider_color">#24000000</color>
+    <color name="color_picture">#7ce6a7</color>
+    <color name="color_audio">#d9534f</color>
+    <color name="color_video">#4a7ae1</color>
+    <color name="color_doc">#77866f</color>
+    <color name="color_app">#8dd35f</color>
+    <color name="selection_color">#bd9ccded</color>
+    <color name="yourTranslucentColor">#29000000</color>
+
+    <color name="black_overlay">#66000000</color>
+
+
+</resources>
