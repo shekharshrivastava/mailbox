@@ -11,15 +11,27 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="10dp"
-        android:text="Enter your work or personal email address"
+        android:gravity="center"
+        android:text="Enter your work or personal email address and password"
         android:textSize="15sp" />
     <EditText
+        android:text="shekhar.shrivastava@quickheal.com"
+        android:id="@+id/emailAddress"
         android:hint="Email Address"
         android:inputType="textEmailAddress"
         android:layout_margin="10dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/tv_header"/>
+    <EditText
+        android:text="Apr@2018"
+        android:id="@+id/password"
+        android:hint="Password"
+        android:inputType="textPassword"
+        android:layout_margin="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/emailAddress"/>
     <RelativeLayout
         android:id="@+id/continue_btn"
         android:layout_width="match_parent"
@@ -29,12 +41,20 @@
         android:padding="15dp">
 
         <TextView
+            android:id="@+id/tv_continue"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentRight="true"
             android:text="Continue "
             android:textColor="@color/colorAccent"
             android:textSize="18sp" />
+        <ProgressBar
+            android:visibility="gone"
+            android:layout_alignParentRight="true"
+            android:layout_toRightOf="@+id/tv_continue"
+            android:id="@+id/progressBar"
+            android:layout_width="25dp"
+            android:layout_height="25dp" />
 
     </RelativeLayout>
 </RelativeLayout>
