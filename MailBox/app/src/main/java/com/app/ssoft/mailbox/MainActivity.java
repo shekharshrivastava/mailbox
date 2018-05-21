@@ -3,6 +3,7 @@ package com.app.ssoft.mailbox;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.Snackbar;
@@ -20,10 +21,13 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.app.ssoft.mailbox.Utils.DividerItemDecoration;
+import com.app.ssoft.mailbox.Utils.Utils;
 import com.app.ssoft.mailbox.model.AuthenticationDetails;
 import com.app.ssoft.mailbox.model.JavaxMailSettings;
+import com.app.ssoft.mailbox.model.MessageDetails;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -31,6 +35,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 
+import javax.mail.Address;
 import javax.mail.BodyPart;
 import javax.mail.Folder;
 import javax.mail.Message;
@@ -41,9 +46,9 @@ import javax.mail.internet.MimeMultipart;
 
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener,SwipeRefreshLayout.OnRefreshListener, MessagesAdapter.MessageAdapterListener {
+        implements NavigationView.OnNavigationItemSelectedListener, SwipeRefreshLayout.OnRefreshListener, MessagesAdapter.MessageAdapterListener {
 
-    private Message[] messages;
+    private javax.mail.Message messageArray[];
     private Store store;
     private Folder emailFolder;
     private Folder folder;
@@ -54,7 +59,7 @@ public class MainActivity extends AppCompatActivity
     private TextView emailTV;
     private TextView userNameTv;
     private InputStream inStream;
-    private ArrayList<Message> messagesList;
+    private ArrayList<MessageDetails> messagesList;
     private MessagesAdapter mAdapter;
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -222,17 +227,48 @@ public class MainActivity extends AppCompatActivity
 //                messagesList.addAll(Arrays.asList(messages));
 //                javax.mail.Message messages[]   = folder.search(new FlagTerm(
 //                        new Flags(Flags.Flag.SEEN), false));
-                for (int i = 0; i <messages.length; i++) {
-                    javax.mail.Message message = messages[i];
-                  /*  Address[] from = message.getFrom();
+                if (messages.length >= 20) {
+                    for (int i = 0; i < 20; i++) {
+                        javax.mail.Message message = messages[i];
+                        MessageDetails messageDetails = new MessageDetails();
+                        Address[] from = message.getFrom();
+                        messageDetails.setFrom(from[0]);
+                        messageDetails.setSentDate(message.getSentDate());
+                        messageDetails.setSubject(message.getSubject());
+                        messageDetails.setDescription(message.getDescription());
+                        messageDetails.setColor(Utils.getRandomMaterialColor(MainActivity.this,"400"));
+           /*         Address[] from = message.getFrom();
                     System.out.println("-------------------------------");
                     System.out.println("Date : " + message.getSentDate());
                     System.out.println("From : " + from[0]);
                     System.out.println("Subject: " + message.getSubject());
                     System.out.println("Content :" + message.getDescription());
-                    getTextFromMessage(message);
+//                    getTextFromMessage(message);
                     System.out.println("--------------------------------");*/
-                    messagesList.add(message);
+                        messageArray = messages;
+                        messagesList.add(messageDetails);
+                    }
+                } else {
+                    for (int i = 0; i < messages.length; i++) {
+                        javax.mail.Message message = messages[i];
+                        MessageDetails messageDetails = new MessageDetails();
+                        Address[] from = message.getFrom();
+                        messageDetails.setFrom(from[0]);
+                        messageDetails.setSentDate(message.getSentDate());
+                        messageDetails.setSubject(message.getSubject());
+                        messageDetails.setDescription(message.getDescription());
+                        messageDetails.setColor(Utils.getRandomMaterialColor(MainActivity.this,"400"));
+           /*         Address[] from = message.getFrom();
+                    System.out.println("-------------------------------");
+                    System.out.println("Date : " + message.getSentDate());
+                    System.out.println("From : " + from[0]);
+                    System.out.println("Subject: " + message.getSubject());
+                    System.out.println("Content :" + message.getDescription());
+//                    getTextFromMessage(message);
+                    System.out.println("--------------------------------");*/
+                        messageArray = messages;
+                        messagesList.add(messageDetails);
+                    }
                 }
            /*     folder.close(true);
                 store.close();*/
@@ -247,13 +283,44 @@ public class MainActivity extends AppCompatActivity
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            mAdapter = new MessagesAdapter(MainActivity.this, messagesList, MainActivity.this);
+            progressBar.setVisibility(View.GONE);
             RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
             recyclerView.setLayoutManager(mLayoutManager);
             recyclerView.setItemAnimator(new DefaultItemAnimator());
             recyclerView.addItemDecoration(new DividerItemDecoration(MainActivity.this, LinearLayoutManager.VERTICAL));
+            mAdapter = new MessagesAdapter(recyclerView, MainActivity.this, messagesList, MainActivity.this);
             recyclerView.setAdapter(mAdapter);
-            progressBar.setVisibility(View.GONE);
+
+            if (mAdapter != null) {
+                mAdapter.setOnLoadMoreListener(new OnLoadMoreListener() {
+                    @Override
+                    public void onLoadMore() {
+                        if (messagesList.size() <= messageArray.length) {
+                            messagesList.add(null);
+                            mAdapter.notifyItemInserted(messagesList.size() - 1);
+                            new Handler().postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    messagesList.remove(messagesList.size() - 1);
+                                    mAdapter.notifyItemRemoved(messagesList.size());
+                                    new loadMoreMessages().execute();
+                                    //Generating more data
+
+
+                                }
+                            }, 5000);
+                        } else {
+                            Toast.makeText(MainActivity.this, "Loading data completed", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+                mAdapter.notifyDataSetChanged();
+                mAdapter.setLoaded();
+            }
+         /*   mAdapter.notifyDataSetChanged();
+            mAdapter.setLoaded();
+*/
+
         }
     }
 
@@ -360,5 +427,49 @@ public class MainActivity extends AppCompatActivity
         System.out.println(out.toString());   //Prints the string content read from input stream
         reader.close();
         return out.toString();
+    }
+
+    public class loadMoreMessages extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    progressBar.setVisibility(View.VISIBLE);
+                }
+            });
+
+            try {
+                if (messageArray.length >= 20) {
+                    int index = messagesList.size();
+                    int end = index + 20;
+                    for (int i = index; i < end; i++) {
+                        javax.mail.Message message = messageArray[i];
+//                        new loadMoreMessages().execute(message);
+                        MessageDetails messageDetails = new MessageDetails();
+
+                        Address[] from = message.getFrom();
+                        messageDetails.setFrom(from[0]);
+                        messageDetails.setSentDate(message.getSentDate());
+                        messageDetails.setSubject(message.getSubject());
+                        messageDetails.setDescription(message.getDescription());
+                        messageDetails.setColor(Utils.getRandomMaterialColor(MainActivity.this,"400"));
+                        messagesList.add(messageDetails);
+                    }
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void message) {
+            super.onPostExecute(message);
+            progressBar.setVisibility(View.GONE);
+            mAdapter.notifyDataSetChanged();
+            mAdapter.setLoaded();
+        }
     }
 }

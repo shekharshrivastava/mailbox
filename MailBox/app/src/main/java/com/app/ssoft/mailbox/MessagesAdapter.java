@@ -1,7 +1,7 @@
 package com.app.ssoft.mailbox;
 
 import android.content.Context;
-import android.os.AsyncTask;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.SparseBooleanArray;
 import android.view.HapticFeedbackConstants;
@@ -10,36 +10,54 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.app.ssoft.mailbox.Utils.FlipAnimator;
+import com.app.ssoft.mailbox.model.MessageDetails;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.mail.Address;
 import javax.mail.Message;
 
-public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.MyViewHolder> {
+public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private Context mContext;
-    private List<javax.mail.Message> messages;
+    private List<MessageDetails> messages;
     private MessageAdapterListener listener;
     private SparseBooleanArray selectedItems;
-
+    private final int VIEW_TYPE_ITEM = 0;
+    private final int VIEW_TYPE_LOADING = 1;
     // array used to perform multiple animation at once
     private SparseBooleanArray animationItemsIndex;
     private boolean reverseAllAnimations = false;
-
+    private int visibleThreshold = 5;
+    private int lastVisibleItem, totalItemCount;
+    private boolean isLoading;
+    private OnLoadMoreListener onLoadMoreListener;
     // index is used to animate only the selected row
     // dirty fix, find a better solution
     private static int currentSelectedIndex = -1;
+    private MyViewHolder myViewHolder;
+    private int position;
+
+    // "Loading item" ViewHolder
+    private class LoadingViewHolder extends RecyclerView.ViewHolder {
+        public ProgressBar progressBar;
+
+        public LoadingViewHolder(View view) {
+            super(view);
+            progressBar = (ProgressBar) view.findViewById(R.id.progressBar1);
+        }
+    }
 
     public class MyViewHolder extends RecyclerView.ViewHolder implements View.OnLongClickListener {
         public TextView from, subject, message, iconText, timestamp;
         public ImageView iconImp, imgProfile;
         public LinearLayout messageContainer;
         public RelativeLayout iconContainer, iconBack, iconFront;
+
 
         public MyViewHolder(View view) {
             super(view);
@@ -57,73 +75,100 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.MyView
             view.setOnLongClickListener(this);
         }
 
+
         @Override
         public boolean onLongClick(View view) {
             listener.onRowLongClicked(getAdapterPosition());
             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
             return true;
         }
+
     }
 
+    public void setOnLoadMoreListener(OnLoadMoreListener mOnLoadMoreListener) {
+        this.onLoadMoreListener = mOnLoadMoreListener;
+    }
 
-    public MessagesAdapter(Context mContext, List<Message> messages, MessageAdapterListener listener) {
+    public MessagesAdapter(RecyclerView recyclerView, Context mContext, List<MessageDetails> messages, MessageAdapterListener listener) {
         this.mContext = mContext;
         this.messages = messages;
         this.listener = listener;
         selectedItems = new SparseBooleanArray();
         animationItemsIndex = new SparseBooleanArray();
+        setHasStableIds(true);
+        final LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                totalItemCount = linearLayoutManager.getItemCount();
+                lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
+                if (!isLoading && totalItemCount <= (lastVisibleItem + visibleThreshold)) {
+                    isLoading = true;
+                    if (onLoadMoreListener != null) {
+                        onLoadMoreListener.onLoadMore();
+                    }
+                }
+            }
+        });
+
     }
 
     @Override
-    public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View itemView = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.message_list_row, parent, false);
+    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
 
-        return new MyViewHolder(itemView);
+        if (viewType == VIEW_TYPE_ITEM) {
+            View itemView = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.message_list_row, parent, false);
+
+            return new MyViewHolder(itemView);
+        } else if (viewType == VIEW_TYPE_LOADING) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_loading, parent, false);
+            return new LoadingViewHolder(view);
+        }
+        return null;
+
+
     }
 
     @Override
-    public void onBindViewHolder(final MyViewHolder holder, final int position) {
-        Message message = messages.get(position);
+    public void onBindViewHolder(final RecyclerView.ViewHolder holder, final int position) {
+        if (holder instanceof MyViewHolder) {
+            MessageDetails message = messages.get(position);
 
-        try {
+this.position = position;
 
+            try {
+                myViewHolder = (MyViewHolder) holder;
+//                new getMessageDetails().execute(message);
+                // displaying text view data
+                if (message.getFrom().toString() != null) {
+//                    Address[] from = message.getFrom();
+                    myViewHolder.from.setText(message.getFrom().toString());
+                }
+                if (message.getSubject() != null) {
+                    myViewHolder.subject.setText(message.getSubject());
+                }
+                myViewHolder.message.setText("Test getMessage()");
+                myViewHolder.timestamp.setText(message.getSentDate().toString());
 
-            // displaying text view data
-            if(message.getFrom().toString()!=null) {
-                Address[] from = message.getFrom();
-                holder.from.setText(from[0].toString());
+                // displaying the first letter of From in icon text
+                if (message.getFrom().toString() != null) {
+                    myViewHolder.iconText.setText(message.getFrom().toString().substring(0, 1));
+                }
+
+                // change the row state to activated
+                holder.itemView.setActivated(selectedItems.get(position, false));
+
+                applyIconAnimation(myViewHolder, position);
+
+                applyProfilePicture(myViewHolder, message);
+            } catch (Exception ex) {
+                ex.printStackTrace();
             }
-            if(message.getSubject()!=null) {
-                holder.subject.setText(message.getSubject());
-            }
-            holder.message.setText("Test getMessage()");
-            holder.timestamp.setText(message.getSentDate().toString());
-
-            // displaying the first letter of From in icon text
-            if(message.getFrom().toString()!=null) {
-                holder.iconText.setText(message.getFrom().toString().substring(0, 1));
-            }
-
-            // change the row state to activated
-            holder.itemView.setActivated(selectedItems.get(position, false));
-
-            // change the font style depending on message read status
-            applyReadStatus(holder, message);
-
-            // handle message star
-            applyImportant(holder, message);
-
-            // handle icon animation
-            applyIconAnimation(holder, position);
-
-            // display profile image
-//            applyProfilePicture(holder, message);
-
-            // apply click events
-            applyClickEvents(holder, position);
-        }catch (Exception ex){
-            ex.printStackTrace();
+        } else if (holder instanceof LoadingViewHolder) {
+            LoadingViewHolder loadingViewHolder = (LoadingViewHolder) holder;
+            loadingViewHolder.progressBar.setIndeterminate(true);
         }
     }
 
@@ -159,8 +204,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.MyView
         });
     }
 
-    private void applyProfilePicture(MyViewHolder holder, Message message) {
-     /*   if (!TextUtils.isEmpty("")) {
+    private void applyProfilePicture(MyViewHolder holder, MessageDetails message) {
+        /*if (!TextUtils.isEmpty("")) {
             Glide.with(mContext).load(message.getPicture())
                     .thumbnail(0.5f)
                     .crossFade()
@@ -174,6 +219,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.MyView
             holder.imgProfile.setColorFilter(message.getColor());
             holder.iconText.setVisibility(View.VISIBLE);
         }*/
+        holder.imgProfile.setImageResource(R.drawable.bg_circle);
+        holder.imgProfile.setColorFilter(message.getColor());
+        holder.iconText.setVisibility(View.VISIBLE);
     }
 
     private void applyIconAnimation(MyViewHolder holder, int position) {
@@ -296,11 +344,20 @@ public class MessagesAdapter extends RecyclerView.Adapter<MessagesAdapter.MyView
         void onRowLongClicked(int position);
     }
 
-    public class getMessageDetails extends AsyncTask<Message,Void,Void>{
 
-        @Override
-        protected Void doInBackground(Message... messages) {
-            return null;
-        }
+    @Override
+    public int getItemViewType(int position) {
+        return messages.get(position) == null ? VIEW_TYPE_LOADING : VIEW_TYPE_ITEM;
     }
+
+    public void setLoaded() {
+        isLoading = false;
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return position;
+    }
+
+
 }
